@@ -12,27 +12,38 @@ function App() {
   const [region, setRegion] = useState("all");
 
   const fetchCountries = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
+    try {
       let url = "";
 
-      if (search.length >= 2) {
-        url = `https://restcountries.com/v3.1/name/${search}`;
-      } else if (region !== "all") {
-        url = `https://restcountries.com/v3.1/region/${region}`;
+      if (search && search.length >= 2) {
+        url = `https://restcountries.com/v3.1/name/${encodeURIComponent(
+          search
+        )}`;
+      } else if (region && region !== "all") {
+        url = `https://restcountries.com/v3.1/region/${encodeURIComponent(
+          region
+        )}`;
       } else {
-        url = `https://restcountries.com/v3.1/all`;
+        url = "https://restcountries.com/v3.1/all"; // Home page: all countries
       }
 
-      const response = await fetch(url);
+      const res = await fetch(url);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch countries");
+      // Handle 404 (no results) separately
+      if (!res.ok) {
+        if (res.status === 404) {
+          setCountries([]);
+          setError(null);
+          return;
+        } else {
+          throw new Error("Failed to fetch countries");
+        }
       }
 
-      const data = await response.json();
+      const data = await res.json();
       setCountries(data);
     } catch (err) {
       setError(err.message);
@@ -49,10 +60,22 @@ function App() {
   return (
     <div className="app">
       <h1>🌍 Countries Explorer</h1>
+      <p className="status">Explore countries by name or region</p>
 
       <div className="controls">
         <SearchBar search={search} setSearch={setSearch} />
         <RegionFilter region={region} setRegion={setRegion} />
+        {(search || region !== "all") && (
+          <button
+            className="clear-btn"
+            onClick={() => {
+              setSearch("");
+              setRegion("all");
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {loading && <p className="status">Loading countries...</p>}
@@ -64,7 +87,7 @@ function App() {
         </div>
       )}
 
-      {!loading && !error && countries.length === 0 && (
+      {!loading && !error && countries.length === 0 && search.length >= 2 && (
         <p className="status">No results found</p>
       )}
 
